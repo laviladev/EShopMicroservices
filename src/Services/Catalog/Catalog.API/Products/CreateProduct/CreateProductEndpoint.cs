@@ -4,9 +4,6 @@ using MediatR;
 
 namespace Catalog.API.Products.CreateProduct
 {
-
-    public record CreateProductRequest(string Name, List<string> Category, string Description, string ImageFile, decimal Price);
-
     public record CreateProductResponse(Guid Id);
 
     public class CreateProductEndpoint : ICarterModule
@@ -14,10 +11,10 @@ namespace Catalog.API.Products.CreateProduct
         public void AddRoutes(IEndpointRouteBuilder app)
         {
 
-            app.MapPost("/products", async (CreateProductRequest request, ISender sender) => {
+            app.MapPost("/products", async (CreateProductCommand request, ISender sender) => {
                 var command = request.Adapt<CreateProductCommand>();
 
-                var result = await sender.Send(request);
+                var result = await sender.Send(command);
 
                 var response = result.Adapt<CreateProductResponse>();
 

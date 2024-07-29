@@ -1,0 +1,13 @@
+services:
+  catalogdb:
+    container_name: catalogdb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin  # Asegúrate de proporcionar una contraseña segura
+      POSTGRES_DB: CatalogDb
+      POSTGRES_HOST_AUTH_METHOD: trust
+    restart: always
+    ports:
+        - "5433:5432"
+    volumes:
+      - postgres_catalog:/var/lib/postgresql/data/ 
