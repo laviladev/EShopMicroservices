@@ -15,6 +15,18 @@ namespace Catalog.API.Products.CreateProduct
 
         public async Task<CreateProductResult> Handle(CreateProductCommand command, CancellationToken cancellationToken)
         {
+            // Validar nombre
+            if (string.IsNullOrWhiteSpace(command.Name))
+            {
+                throw new Exception("Name is required");
+            }
+            string sqlSearchForName = "SELECT id FROM products WHERE name = @name";
+            var coincidencesNames = await _dataBaseCommands.ReadQuery<Product>(sqlSearchForName, new Dictionary<string, object> { { "name", command.Name } }, []);
+            if (coincidencesNames.Count > 0)
+            {
+                throw new Exception("Product already exists");
+            }
+
             // Validar categorías
             var parameterNames = new List<string>();
             Dictionary<string, object> namesParameters = [];

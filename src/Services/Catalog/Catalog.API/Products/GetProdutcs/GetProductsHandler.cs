@@ -12,9 +12,13 @@ namespace Catalog.API.Products.GetProdutcs
     public record GetProductByIdQueryResult(Product Product);
     public record GetProductByIdQuery(Guid Id) : IQuery<GetProductByIdQueryResult>;
 
+    public record GetProductsByCategoryResult(List<Product> Products);
+    public record GetProductsByCategoryRequest(string Name) : IQuery<GetProductsByCategoryResult>;
+
     public class GetProductsHandler(DataBaseCommands dataBaseCommands):
         IQueryHandler<GetProductsRequest, GetProductsResult>,
-        IQueryHandler<GetProductByIdQuery, GetProductByIdQueryResult>
+        IQueryHandler<GetProductByIdQuery, GetProductByIdQueryResult>,
+        IQueryHandler<GetProductsByCategoryRequest, GetProductsByCategoryResult>
     {
         private readonly DataBaseCommands _dataBaseCommands = dataBaseCommands;
 
@@ -45,7 +49,7 @@ namespace Catalog.API.Products.GetProdutcs
             }
             sqlCommand = sqlCommand.TrimEnd(' ', 'A', 'N', 'D', 'W', 'H', 'E', 'R');
 
-            var products = await _dataBaseCommands.ReadQuery<Product>(sqlCommand, namesParameters);
+            var products = await _dataBaseCommands.ReadQuery<Product>(sqlCommand, namesParameters, ["Categories"], "products_categories");
 
             return new GetProductsResult(products);
         }
@@ -61,9 +65,28 @@ namespace Catalog.API.Products.GetProdutcs
             var sqlParameters = new Dictionary<string, object> {
                 { "@Id", request.Id }
             };
-            Product result = (await _dataBaseCommands.ReadQuery<Product>(sqlCommand, sqlParameters)).First();
-
+            var result = (await _dataBaseCommands.ReadQuery<Product>(sqlCommand, sqlParameters)).FirstOrDefault() ?? throw new ProductNotFoundException();
             return new GetProductByIdQueryResult(result);
+        }
+
+        public async Task<GetProductsByCategoryResult> Handle(GetProductsByCategoryRequest request, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+            {
+                throw new Exception("Name is required");
+            }
+
+            string sqlCommand = @"SELECT p.*
+                        FROM products p
+                        JOIN products_categories pc ON p.id = pc.product_id
+                        JOIN categories c ON c.id = pc.category_id
+                        WHERE c.name = @Name;";
+
+            var sqlParameters = new Dictionary<string, object> {
+                { "@Name", request.Name }
+            };
+            var result = await _dataBaseCommands.ReadQuery<Product>(sqlCommand, sqlParameters);
+            return new GetProductsByCategoryResult(result);
         }
     }
 }

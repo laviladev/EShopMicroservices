@@ -33,7 +33,7 @@ namespace Catalog.API.Categories.ListCategories
                 { "@Name", query.Name }
             };
 
-            var result = await _dataBaseCommands.ReadQuery<Category>(sqlCommand, sqlParameters, ["Products"], "categories");
+            var result = await _dataBaseCommands.ReadQuery<Category>(sqlCommand, sqlParameters, ["Products"], "products_categories");
 
             return new ListCategoriesQueryResult(result);
         }

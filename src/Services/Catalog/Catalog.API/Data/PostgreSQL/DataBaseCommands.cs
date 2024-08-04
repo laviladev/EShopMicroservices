@@ -29,7 +29,7 @@ namespace Catalog.API.Data.PostgreSQL
             // Ejecutar el comando
             return await command.ExecuteNonQueryAsync() > 0;
         }
-        public async Task<List<T>> ReadQuery<T>(string sqlCommand, Dictionary<string, object> parameters, List<string>? propertiesToLoad = null, string? relationalTableName = null) where T : new()
+        public async Task<List<T>> ReadQuery<T>(string sqlCommand, Dictionary<string, object> parameters, List<string>? propertiesToLoad = null, string? joinTableName = null) where T : new()
         {
             using var connection = _connectionProvider.GetConnection();
             connection.Open();
@@ -49,13 +49,13 @@ namespace Catalog.API.Data.PostgreSQL
             {
                 while (await reader.ReadAsync())
                 {
-                    result.Add(await MapReaderToObject<T>(reader, propertiesToLoad, relationalTableName));
+                    result.Add(await MapReaderToObject<T>(reader, propertiesToLoad, joinTableName));
                 }
             }
             return result;
         }
 
-    private async Task<T> MapReaderToObject<T>(NpgsqlDataReader reader, List<string>? propertiesToLoad = null, string? relationalTableName = null) where T : new()
+    private async Task<T> MapReaderToObject<T>(NpgsqlDataReader reader, List<string>? propertiesToLoad = null, string? joinTableName = null) where T : new()
     {
         T obj = new T();
         Type type = typeof(T);
@@ -66,6 +66,7 @@ namespace Catalog.API.Data.PostgreSQL
         {
             string columnName = reader.GetName(i);
             object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+            Console.WriteLine($"value: {value}");
 
             PropertyInfo? property = type.GetProperty(columnName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
             if (property != null && property.CanWrite)
@@ -73,15 +74,16 @@ namespace Catalog.API.Data.PostgreSQL
                 property.SetValue(obj, value);
             }
         }
+        Console.WriteLine($"Loaded: {obj}");
 
         // Handle many-to-many relationships selectively
         var manyToManyProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
         foreach (var property in manyToManyProperties)
         {
-            if (propertiesToLoad.Contains(property.Name) && property.PropertyType.IsGenericType && relationalTableName != null)
+            if (propertiesToLoad.Contains(property.Name) && property.PropertyType.IsGenericType && joinTableName != null)
             {
                 Type itemType = property.PropertyType.GetGenericArguments()[0];
-                var relatedItems = await GetRelatedItems(obj, property, itemType, relationalTableName);
+                var relatedItems = await GetRelatedItems(obj, property, itemType, joinTableName);
                 property.SetValue(obj, relatedItems);
             }
         }
@@ -89,7 +91,7 @@ namespace Catalog.API.Data.PostgreSQL
         return obj;
     }
 
-    private async Task<object> GetRelatedItems(object parentObj, PropertyInfo property, Type itemType, string relationalTableName)
+    private async Task<object> GetRelatedItems(object parentObj, PropertyInfo property, Type itemType, string joinTableName)
     {
         using var connection = _connectionProvider.GetConnection();
         connection.Open();
@@ -100,7 +102,6 @@ namespace Catalog.API.Data.PostgreSQL
         object parentId = parentIdProperty.GetValue(parentObj) ?? throw new InvalidOperationException("Parent ID cannot be null");
         
         string relatedTableName = property.Name;
-        string joinTableName = $"{relatedTableName}_{relationalTableName}";
         string parentIdColumnName = $"{parentObj.GetType().Name}_id";
         string relatedIdColumnName = $"{itemType.Name}_id";
 
@@ -113,9 +114,11 @@ namespace Catalog.API.Data.PostgreSQL
         using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddWithValue("@ParentId", parentId);
 
-        var relatedItems = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType));
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+            var relatedItems = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType));
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
 
-        using (NpgsqlDataReader reader = await command.ExecuteReaderAsync())
+            using (NpgsqlDataReader reader = await command.ExecuteReaderAsync())
         {
             while (await reader.ReadAsync())
             {
@@ -131,12 +134,16 @@ namespace Catalog.API.Data.PostgreSQL
                         itemProperty.SetValue(item, value);
                     }
                 }
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
                 relatedItems.Add(item);
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
             }
         }
 
-        return relatedItems;
-    }
+#pragma warning disable CS8603 // Possible null reference return.
+            return relatedItems;
+#pragma warning restore CS8603 // Possible null reference return.
+        }
 
         public async Task<int> ReadQueryExecuteScalar(string sqlCommand, Dictionary<string, object> parameters)
         {

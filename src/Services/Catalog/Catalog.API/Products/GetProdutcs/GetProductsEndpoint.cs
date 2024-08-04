@@ -32,11 +32,23 @@ namespace Catalog.API.Products.GetProdutcs
                 var response = result.Adapt<GetProductByIdQueryResult>();
                 return Results.Ok(response);
             })
-            .WithName("GetProduct")
+            .WithName("GetProductById")
             .Produces<GetProductByIdQueryResult>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .WithSummary("Get product")
-            .WithDescription("Get product");
+            .WithSummary("Get product by id")
+            .WithDescription("Get product by id");
+ 
+            app.MapGet("/productsByCategory/{Name}", async (string Name, ISender sender) => {
+                var query = new GetProductsByCategoryRequest(Name);
+                var result = await sender.Send(query);
+                var response = result.Adapt<GetProductsByCategoryResult>();
+                return Results.Ok(response);
+            })
+            .WithName("productsByCategory")
+            .Produces<GetProductByIdQueryResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .WithSummary("Get product by category")
+            .WithDescription("Get product by category");
         }
     }
 }
