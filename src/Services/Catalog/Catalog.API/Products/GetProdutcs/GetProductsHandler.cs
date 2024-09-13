@@ -65,7 +65,7 @@ namespace Catalog.API.Products.GetProdutcs
             var sqlParameters = new Dictionary<string, object> {
                 { "@Id", request.Id }
             };
-            var result = (await _dataBaseCommands.ReadQuery<Product>(sqlCommand, sqlParameters)).FirstOrDefault() ?? throw new ProductNotFoundException();
+            var result = (await _dataBaseCommands.ReadQuery<Product>(sqlCommand, sqlParameters, ["Categories"], "products_categories")).FirstOrDefault() ?? throw new ProductNotFoundException();
             return new GetProductByIdQueryResult(result);
         }
 

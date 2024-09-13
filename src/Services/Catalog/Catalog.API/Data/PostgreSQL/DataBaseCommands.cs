@@ -18,6 +18,7 @@ namespace Catalog.API.Data.PostgreSQL
             using var connection = _connectionProvider.GetConnection();
             connection.Open();
 
+            Console.WriteLine($"Executing: {sqlCommand}");
             using var command = new NpgsqlCommand(sqlCommand, connection);
             // Agregar los parámetros al comando
             foreach (var param in parameters)
@@ -29,7 +30,7 @@ namespace Catalog.API.Data.PostgreSQL
             // Ejecutar el comando
             return await command.ExecuteNonQueryAsync() > 0;
         }
-        public async Task<List<T>> ReadQuery<T>(string sqlCommand, Dictionary<string, object> parameters, List<string>? propertiesToLoad = null, string? joinTableName = null) where T : new()
+        public async Task<List<T>> ReadQuery<T>(string sqlCommand, Dictionary<string, object> parameters, List<string>? propertiesToLoad = null, string? joinTableName = null, NpgsqlTypes.NpgsqlDbType? npgsqlDbType = null) where T : new()
         {
             using var connection = _connectionProvider.GetConnection();
             connection.Open();
@@ -38,9 +39,15 @@ namespace Catalog.API.Data.PostgreSQL
             Console.WriteLine($"Executing: {sqlCommand}");
             using var command = new NpgsqlCommand(sqlCommand, connection);
             // Agregar los parámetros al comando
+            // TODO: Crear una lista de npgsqlDbType donde cada elemento de la lista corresponda a un párametro
             foreach (var param in parameters)
             {
-                command.Parameters.AddWithValue(param.Key, param.Value ?? DBNull.Value);
+                if (npgsqlDbType.HasValue)
+                {
+                    command.Parameters.AddWithValue(param.Key, npgsqlDbType.Value, param.Value ?? DBNull.Value);
+                } else {
+                    command.Parameters.AddWithValue(param.Key, param.Value ?? DBNull.Value);
+                }
                 Console.WriteLine($"{param.Key} = {param.Value}");
             }
 
@@ -66,7 +73,6 @@ namespace Catalog.API.Data.PostgreSQL
         {
             string columnName = reader.GetName(i);
             object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-            Console.WriteLine($"value: {value}");
 
             PropertyInfo? property = type.GetProperty(columnName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
             if (property != null && property.CanWrite)
@@ -74,7 +80,6 @@ namespace Catalog.API.Data.PostgreSQL
                 property.SetValue(obj, value);
             }
         }
-        Console.WriteLine($"Loaded: {obj}");
 
         // Handle many-to-many relationships selectively
         var manyToManyProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
