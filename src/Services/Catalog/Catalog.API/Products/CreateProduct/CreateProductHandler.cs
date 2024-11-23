@@ -1,6 +1,7 @@
 using BuildingBlocks.CQRS;
 using Catalog.API.Data.PostgreSQL;
 using Catalog.API.Models;
+using FluentValidation;
 
 namespace Catalog.API.Products.CreateProduct
 {
@@ -8,13 +9,28 @@ namespace Catalog.API.Products.CreateProduct
         : ICommand<CreateProductResult>;
     public record CreateProductResult(Guid Id);
 
+    public class CreateProductCommandValidator : AbstractValidator<CreateProductCommand> {
+        public CreateProductCommandValidator() {
+            RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required");
+            RuleFor(x => x.Description).NotEmpty().WithMessage("Description is required");
+            RuleFor(x => x.ImageFile).NotEmpty().WithMessage("ImageFile is required");
+            RuleFor(x => x.Price).NotEmpty().WithMessage("Price is required");
+            RuleFor(x => x.Price).GreaterThan(0).WithMessage("Price must be greater than 0");
+        }
+    }
 
-    internal class CreateProductCommandHandler(DataBaseCommands dataBaseCommands) : ICommandHandler<CreateProductCommand, CreateProductResult>
+    internal class CreateProductCommandHandler(DataBaseCommands dataBaseCommands, IValidator<CreateProductCommand> validator) : ICommandHandler<CreateProductCommand, CreateProductResult>
     {
         private readonly DataBaseCommands _dataBaseCommands = dataBaseCommands;
 
         public async Task<CreateProductResult> Handle(CreateProductCommand command, CancellationToken cancellationToken)
         {
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            var errors = validationResult.Errors.Select(x => x.ErrorMessage).ToList();
+            if (errors.Count > 0)
+            {
+                throw new ValidationException(string.Join(", ", errors));
+            }
             // Validar nombre
             if (string.IsNullOrWhiteSpace(command.Name))
             {
