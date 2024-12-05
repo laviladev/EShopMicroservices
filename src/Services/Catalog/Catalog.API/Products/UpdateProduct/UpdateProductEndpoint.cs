@@ -7,7 +7,7 @@ namespace Catalog.API.Products.UpdateProduct
     {
         public void AddRoutes(IEndpointRouteBuilder app)
         {
-            app.MapPut("/products", async (UpdateProductRequest request, ISender sender) => {
+            app.MapPut("/products", async (UpdateProductCommand request, ISender sender) => {
                 var result = await sender.Send(request);
                 return Results.Ok(result);
             })

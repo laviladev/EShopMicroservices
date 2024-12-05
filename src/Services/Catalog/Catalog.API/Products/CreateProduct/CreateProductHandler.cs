@@ -19,23 +19,12 @@ namespace Catalog.API.Products.CreateProduct
         }
     }
 
-    internal class CreateProductCommandHandler(DataBaseCommands dataBaseCommands, IValidator<CreateProductCommand> validator) : ICommandHandler<CreateProductCommand, CreateProductResult>
+    internal class CreateProductCommandHandler(DataBaseCommands dataBaseCommands) : ICommandHandler<CreateProductCommand, CreateProductResult>
     {
         private readonly DataBaseCommands _dataBaseCommands = dataBaseCommands;
 
         public async Task<CreateProductResult> Handle(CreateProductCommand command, CancellationToken cancellationToken)
         {
-            var validationResult = await validator.ValidateAsync(command, cancellationToken);
-            var errors = validationResult.Errors.Select(x => x.ErrorMessage).ToList();
-            if (errors.Count > 0)
-            {
-                throw new ValidationException(string.Join(", ", errors));
-            }
-            // Validar nombre
-            if (string.IsNullOrWhiteSpace(command.Name))
-            {
-                throw new Exception("Name is required");
-            }
             string sqlSearchForName = "SELECT id FROM products WHERE name = @name";
             var coincidencesNames = await _dataBaseCommands.ReadQuery<Product>(sqlSearchForName, new Dictionary<string, object> { { "name", command.Name } }, []);
             if (coincidencesNames.Count > 0)

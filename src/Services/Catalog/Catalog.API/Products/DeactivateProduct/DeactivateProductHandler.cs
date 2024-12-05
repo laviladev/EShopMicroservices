@@ -2,11 +2,18 @@ using BuildingBlocks.CQRS;
 using Catalog.API.Data.PostgreSQL;
 using Catalog.API.Exceptions;
 using Catalog.API.Models;
+using FluentValidation;
 
 namespace Catalog.API.Products.DeactivateProduct
 {
   public record DeactivateProductResult(bool IsSuccess);
   public record DeactivateProductCommand(Guid Id) : ICommand<DeactivateProductResult>;
+
+      public class CreateProductCommandValidator : AbstractValidator<DeactivateProductCommand> {
+        public CreateProductCommandValidator() {
+            RuleFor(x => x.Id).NotEmpty().WithMessage("Product Id is required");
+        }
+    }
   public class DeactivateProductHandler(DataBaseCommands dataBaseCommands) : ICommandHandler<DeactivateProductCommand, DeactivateProductResult> {
     private readonly DataBaseCommands _dataBaseCommands = dataBaseCommands;
 

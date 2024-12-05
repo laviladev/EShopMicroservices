@@ -5,12 +5,15 @@ using BuildingBlocks.Behaviors;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddCarter();
+var Assembly = typeof(Program).Assembly;
+
 builder.Services.AddMediatR(config => {
-    config.RegisterServicesFromAssembly(typeof(Program).Assembly);
-    config.AddOpenBehavior(typeof(ValidationBehavior<,>));
+  config.RegisterServicesFromAssembly(Assembly);
+  config.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
-builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+
+builder.Services.AddCarter();
+builder.Services.AddValidatorsFromAssembly(Assembly);
 builder.Services.AddSingleton<INpgsqlConnectionProvider, NpgsqlConnectionProvider>();
 builder.Services.AddSingleton<DataBaseCommands, DataBaseCommands>();
 

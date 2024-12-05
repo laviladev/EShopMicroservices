@@ -2,29 +2,32 @@ using BuildingBlocks.CQRS;
 using Catalog.API.Data.PostgreSQL;
 using Catalog.API.Exceptions;
 using Catalog.API.Models;
+using FluentValidation;
 
 namespace Catalog.API.Products.UpdateProduct
 {
 
     public record UpdateProductResult(bool IsSuccess);
-    public record UpdateProductRequest(Guid Id, string Name, string Description, decimal Price, string ImageFile, List<Guid>? Categories)
+    public record UpdateProductCommand(Guid Id, string Name, string Description, decimal Price, string ImageFile, List<Guid>? Categories)
     : ICommand<UpdateProductResult>;
-    public class UpdateProductHandler(DataBaseCommands dataBaseCommands): ICommandHandler<UpdateProductRequest, UpdateProductResult>
+
+    public class CreateProductCommandValidator : AbstractValidator<UpdateProductCommand> {
+        public CreateProductCommandValidator() {
+            RuleFor(x => x.Id).NotEmpty().WithMessage("Product Id is required");
+            RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required")
+                .Length(2, 150).WithMessage("Name must be between 2 and 150 characters");
+            RuleFor(x => x.Description).NotEmpty().WithMessage("Description is required");
+            RuleFor(x => x.ImageFile).NotEmpty().WithMessage("ImageFile is required");
+            RuleFor(x => x.Price).GreaterThan(0).WithMessage("Price must be greater than 0");
+            RuleFor(x => x.Price).NotEmpty().WithMessage("Price is required");
+        }
+    }
+    public class UpdateProductHandler(DataBaseCommands dataBaseCommands): ICommandHandler<UpdateProductCommand, UpdateProductResult>
     {
         private readonly DataBaseCommands _dataBaseCommands = dataBaseCommands;
 
-        public async Task<UpdateProductResult> Handle(UpdateProductRequest request, CancellationToken cancellationToken)
+        public async Task<UpdateProductResult> Handle(UpdateProductCommand request, CancellationToken cancellationToken)
         {
-            if (request.Id == Guid.Empty) {
-                throw new Exception("Id is required");
-            }
-            if (request.Name == null) {
-                throw new Exception("Name is required");
-            }
-            if (request.Price <= 0) {
-                throw new Exception("Price must be greater than 0");
-            }
-
             string getSqlCommand = "SELECT * FROM products WHERE id = @Id";
             var getSqlParameters = new Dictionary<string, object> {
                 { "@Id", request.Id }
